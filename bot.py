@@ -4,45 +4,53 @@ import telebot
 instruction = '''
 Вот что я умею:
 
-/reg - регистрация
+/reg - Зарегистриваться как новый пользователь. Все ваши данные будут удалены.
 /enter - вход
 /help - помощь
+
 '''
 bot = telebot.TeleBot(TOKEN)
 
-name = 'name'
-surname = 'surname'
-dob = '01.01.2000' # Date of birth - дата рождения
+user_id = 'id'
+user_email = 'username'
+nursik = 440165562
+ela = 558589609
+rambo = 463863602
+creator = 342541293
 
 @bot.message_handler(content_types = ['text'])
 
 def get_message(message):   #Обработчик сообщений.
+    
     if message.text == '/start':
-        bot.send_message(message.chat.id ,'Привет!' + instruction)
+        
+        if message.from_user.id == creator:
+            bot.send_message(message.chat.id ,'Здравствуй! Великий создатель! ' + instruction)
+        if message.from_user.id == nursik:
+            bot.send_message(message.chat.id ,'Привет Нурсик!' + instruction)
+        if message.from_user.id == ela:
+            bot.send_message(message.chat.id ,'Привет Ела!' + instruction)
+        if message.from_user.id == rambo:
+            bot.send_message(message.chat.id ,'Привет Рая!' + instruction)
+    
     elif message.text == '/help':
         bot.send_message(message.chat.id, instruction)
+    
     elif message.text == '/reg':
-        bot.send_message(message.chat.id, 'Введите ваше имя')
-        bot.register_next_step_handler(message, add_name)
+        global user_id
+        user_id = message.from_user.id #Получение telegram user id
+        bot.send_message(message.chat.id, 'Введите адрес электронной почты')    #Адрес электронной почты будет использоваться в качестве логина
+        bot.register_next_step_handler(message, add_user_email)
+    
     elif message.text == '/enter':
-        bot.send_message(message.chat.id, name + ' ' + surname + ' родился в ' + dob)
+        bot.send_message(message.chat.id, user_id)
+    
     else:
         bot.send_message(message.from_user.id, 'Я тебя не понимаю, напиши мне /help')
 
-def add_name(message):  #Добавить имя.
-    global name
-    name = message.text
-    bot.send_message(message.chat.id, 'Введите вашу фамилию')
-    bot.register_next_step_handler(message, add_surname)
-
-def add_surname(message): #Добавить фамилию.
-    global surname
-    surname = message.text
-    bot.send_message(message.chat.id, 'Введите дату рождения в следующем формате: 31.12.1993')
-    bot.register_next_step_handler(message, add_dob)
-
-def add_dob(message): #Добавить дату рождения.
-    global dob
-    dob = message.text
+def add_user_email(message): #Добавление электронной почты пользователя 
+    
+    global user_email
+    user_email = message.text
 
 bot.polling(none_stop= True, interval = 0)
