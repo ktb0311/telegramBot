@@ -11,37 +11,68 @@ user_is_entered = False # Используется как статус юзер�
 
 cursor.execute("SELECT user_id FROM users")
 query_result = cursor.fetchall()    #Получаем список с элементами tuple
-users_list = [ix[0] for ix in query_result]     #Создаем список Telegram user ID, которые зарегистрированы
+
+users_list = [ix[0] for ix in query_result]    #Генератор списка Telegram user ID, которые зарегистрированы. Надо этот момент пересмотреть.
+
+#Расходы
+costs = ['1','2','3']
+food_purchase = ['Овощи и фрукты', 'Напитки','Молочные продукты', 'Яйца','Колбасные изделия','Полуфабрикаты', 'Мясо и рыба'] #Расходы на покупку продуктов питания 
+transportation_costs = ['Автобус', 'Такси', 'Поезд', 'Самолет'] #Расходы на транспорт
+loan_payment = ['Ипотека'] #Платежи по кредитам
+debt_payment = ['Долг соседу'] #Платежи по долгам
+entertainment_expenses = ['Кафе и рестораны', 'Поход в театр или кино', 'Книги', 'Музыка','Игры'] #Расходы на развлечения, досуг.
+treatment_costs = ['Поход к стоматологу'] #Расходы на лечение, на лекарства
+subscriptions = ['Спортивный зал'] #Абонементы и подписки
+fines_and_taxes = ['Штраф','Налог на недвижимость'] #Штрафы и налоги
+public_utilities = ['Электричество','Газ','Горяча вода', 'Холодная вода'] #Коммунальные услуги
 
 instruction = '''
-Вот что я умею делать:
+Вот, что я умею делать:
 
+/reg - регистрация
+/cost - добавить расход
+/income - добавить доход
 /help - помощь
-/new_cat - новая категория расходов
 '''
+keyboard_commands = telebot.types.ReplyKeyboardMarkup(True, row_width = 1) #Клавиатура с командами
+keyboard_commands.add('/reg','/help','/cost','/income')
+keyboard_costs = telebot.types.ReplyKeyboardMarkup(True, row_width = 2) #Клавиатура с расходами
+[keyboard_costs.add(costs[i]) for i in range(len(costs))] #Клавиатура с расходами. Не самая лучшая идея
 
 @bot.message_handler(content_types = ['text'])
-
 def get_message(message):   #Обработчик сообщений.
     
     global user_is_entered
     global users_list
     
-    user_is_entered = message.from_user.id in users_list     # Изменение значение user_is_entered на True. True - юзер уже зарегистрирован. Проверка на то что юзер уже зарегистрирован
+    user_is_entered = message.from_user.id in users_list     # Проверка регистрации юзера. True - юзер уже зарегистрирован. 
+    
+    #Обработка команд. Хотя мне не особо нравится. Переделай потом!!! 
     
     if message.text == '/start':
-        if user_is_entered == True: 
-            bot.send_message(message.chat.id, 'Добро пожаловать '+ message.from_user.first_name +' '+ message.from_user.last_name+ '! Рад что вы вернулись.')
+        bot.send_message(message.chat.id, 'Добро пожаловать '+ message.from_user.first_name +' '+ message.from_user.last_name+ '! ' + instruction, reply_markup=keyboard_commands)
+
+    elif message.text == '/help': #Помощь
+        bot.send_message(message.chat.id, instruction)
+    
+    elif message.text == '/cost': #Расход
+        if user_is_entered == True:
+            bot.send_message(message.chat.id, 'Выберите категорию расходов', reply_markup = keyboard_costs)
+            bot.register_next_step_handler(message, add_cost)
         else:
-            bot.send_message(message.chat.id, 'Здравствуйте, ' + message.from_user.first_name +' '+ message.from_user.last_name+'! Чтобы зарегистрироваться напишите мне /reg')
-        bot.send_message(message.chat.id, instruction)
-    elif message.text == '/help':
-        bot.send_message(message.chat.id, instruction)
-    elif message.text == '/reg':
-        if user_is_entered == True:    #Проверка статуса
+            bot.send_message(message.chat.id, 'Вам необходимо зарегистрироватся. Для этого напишите /reg')
+            
+    elif message.text == '/income': #Доход
+        if user_is_entered == True:
+            bot.register_next_step_handler(message, add_income)
+        else:
+            bot.send_message(message.chat.id, 'Вам необходимо зарегистрироватся. Для этого напишите /reg')
+    
+    elif message.text == '/reg': #Регистрация
+        if user_is_entered == True:
             bot.send_message(message.chat.id, 'Вы уже зарегистрированы')
         else:
-            bot.send_message(message.chat.id, 'Введите адрес электронной почты')    #Адрес электронной почты будет использоваться как . . .
+            bot.send_message(message.chat.id, 'Введите адрес электронной почты')    #Адрес электронной почты будет использоваться как . . . Все еще не решил)))
             bot.register_next_step_handler(message, add_user)
     else:
         bot.send_message(message.from_user.id, 'Я вас не понимаю, напишите мне /help')
@@ -52,12 +83,22 @@ def add_user(message):    #Сохрание электронной почты п
         bot.send_message(message.chat.id, 'Это не адрес электронной почты. Введите адрес электронной почты')
         bot.register_next_step_handler(message, add_user)
     else:
+        global users_list
         table_name = 'user' + str(message.from_user.id)
         cursor.execute("INSERT INTO users(user_id, user_email) VALUES(%s, %r)" %(message.from_user.id, message.text))  #Заносим в БД Telegram user ID и email юзера
-        cursor.execute("CREATE TABLE {table_name}(ID INT PRIMARY KEY NOT NULL, SUM INT NOT NULL, CATEGORY VARCHAR(50))".format (table_name = table_name))   #Создаем таблицы с названием user + Telegram user ID
+        cursor.execute("CREATE TABLE {table_name}(id INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY, sum INT NOT NULL, CATEGORY VARCHAR(50), dateofentry date NOT NULL)".format (table_name = table_name))   #Создаем таблицы с названием user + Telegram user ID
         db.commit()
+        
+        users_list.append(message.from_user.id) # Добавление Telegram user ID нового юзера в список юзеров
+        
         global user_is_entered
         user_is_entered = True
         bot.send_message(message.chat.id, 'Регистрация прошла успешна!')
+
+def add_cost(message):
+    bot.send_message(message.chat.id, 'Расход')
+
+def add_income(message):
+    bot.send_message(message.chat.id, 'Доход')
 
 bot.polling(none_stop = True)
