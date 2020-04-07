@@ -126,13 +126,28 @@ def add_income(message): #Добавить доход
 
 def add_to_db(message, type_of_record, category): #Запись в БД.
     
-    sum_to_record = int(message.text)
-    table_name = type_of_record + str(message.from_user.id)
-    today = str(datetime.date.today()) #Сегодня
-    cursor.execute("INSERT INTO {table_name}(sum, category, dateofentry) VALUES({sum_to_record}, {category!r}, {dateofentry!r})".format(table_name = table_name, sum_to_record = sum_to_record, category = category,  dateofentry = today))
-    bot.send_message(message.chat.id, 'Запись успешно добавлена', reply_markup = keyboard_commands)
-    bot.register_next_step_handler(message, get_message)
+    #Обработка исключений. Должно быть введено целое число
+    try:
+        sum_to_record = int(message.text)
+
+    except ValueError: #Если введенное значение не число
+        bot.send_message(message.chat.id, 'Введите число без запятых, точек и других знаков!')
+        bot.register_next_step_handler(message, add_to_db, type_of_record, category)
     
-    db.commit()
+    else:
+        table_name = type_of_record + str(message.from_user.id)
+        today = str(datetime.date.today()) #Сегодня
+        
+        #Обработка исключений. Чтобы ошибка записи в БД не привела к вылету.
+        try:
+            cursor.execute("INSERT INTO {table_name}(sum, category, dateofentry) VALUES({sum_to_record}, {category!r}, {dateofentry!r})".format(table_name = table_name, sum_to_record = sum_to_record, category = category,  dateofentry = today))
+        except:
+            bot.send_message(message.chat.id, 'Что - то пошло не так. Просим вас повторить позднее.', reply_markup = keyboard_commands)
+        else:
+            bot.send_message(message.chat.id, 'Запись успешно добавлена', reply_markup = keyboard_commands)
+        
+        bot.register_next_step_handler(message, get_message)
+    
+        db.commit()
 
 bot.polling(none_stop = True)
