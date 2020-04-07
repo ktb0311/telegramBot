@@ -16,7 +16,7 @@ query_result = cursor.fetchall()    #Получаем список с элеме
 users_list = [ix[0] for ix in query_result]    #Генератор списка Telegram user ID, которые зарегистрированы. Надо этот момент пересмотреть.
 
 #Расходы
-costs = ['Транспорт','Питание','Продукты','Коммунальные платежи','Долги и кредиты','Развлечение']
+costs = ['Транспорт','Питание','Продукты','Коммунальные платежи','Долги и кредиты','Развлечение','Назад']
 
 #Пока на все это применение не нашел
 food_purchase = ['Овощи и фрукты', 'Напитки','Молочные продукты', 'Яйца','Колбасные изделия','Полуфабрикаты', 'Мясо и рыба'] #Расходы на покупку продуктов питания 
@@ -30,7 +30,7 @@ fines_and_taxes = ['Штраф','Налог на недвижимость'] #Ш�
 public_utilities = ['Электричество','Газ','Горяча вода', 'Холодная вода'] #Коммунальные услуги
 
 #Доходы
-incomes = ['Зарплата', 'Подработка', 'Кредит или долг', 'Депозит']
+incomes = ['Зарплата', 'Подработка', 'Кредит или долг', 'Депозит', 'Назад']
 
 instruction = '''
 Вот, что я умею делать:
@@ -61,10 +61,10 @@ def get_message(message):   #Обработчик сообщений.
     user_is_entered = message.from_user.id in users_list     # Проверка регистрации юзера. True - юзер уже зарегистрирован. 
     
     #Обработка команд. Хотя мне не особо нравится. Переделай потом!!! 
-    
-    if message.text == '/start':
-        bot.send_message(message.chat.id, 'Добро пожаловать '+ message.from_user.first_name +' '+ message.from_user.last_name+ '! ' + instruction, reply_markup=keyboard_commands)
 
+    if message.text == '/start':
+        bot.send_message(message.chat.id, 'Добро пожаловать '+ message.from_user.first_name +' '+ message.from_user.last_name+ '! ' + instruction, reply_markup=keyboard_commands)    
+    
     elif message.text == '/help': #Помощь
         bot.send_message(message.chat.id, instruction)
     
@@ -111,18 +111,38 @@ def add_user(message):    #Сохрание электронной почты п
         user_is_entered = True
         bot.send_message(message.chat.id, 'Регистрация прошла успешна!')
 
-    #Кажись эти функции надо бы доработать. Создать одну
+    #Кажись эти функции надо бы доработать. Создать одну?
+    #Все равно они мне не нравятся!
+
 def add_cost(message): #Добавить расход
     
-    category = message.text
-    bot.send_message(message.chat.id, 'Введите сумму расхода')
-    bot.register_next_step_handler(message, add_to_db, 'cost', category)
+    if message.text in costs[:-1]: #Убеждаемся, что выбрана существующая категория
+        category = message.text 
+        bot.send_message(message.chat.id, 'Введите сумму расхода')
+        bot.register_next_step_handler(message, add_to_db, 'cost', category)
+    
+    elif message.text == 'Назад': #Вернуться к обработчику команд
+        bot.register_next_step_handler(message, get_message)
+        bot.send_message(message.chat.id, 'Выберите команду', reply_markup = keyboard_commands)
+    
+    else: 
+        bot.send_message(message.chat.id, 'Выберите категорию расхода', reply_markup = keyboard_costs)
+        bot.register_next_step_handler(message, add_cost)
 
 def add_income(message): #Добавить доход
     
-    category = message.text
-    bot.send_message(message.chat.id, 'Введите сумму дохода')
-    bot.register_next_step_handler(message, add_to_db, 'income', category)
+    if message.text in incomes[:-1]: #Убеждаемся, что выбрана существующая категория
+        category = message.text
+        bot.send_message(message.chat.id, 'Введите сумму дохода')
+        bot.register_next_step_handler(message, add_to_db, 'income', category)
+    
+    elif message.text == 'Назад': #Вернуться к обработчику команд
+        bot.register_next_step_handler(message, get_message)
+        bot.send_message(message.chat.id, 'Выберите команду', reply_markup = keyboard_commands)
+    
+    else:
+        bot.send_message(message.chat.id, 'Выберите категорию дохода', reply_markup = keyboard_incomes)
+        bot.register_next_step_handler(message, add_income)
 
 def add_to_db(message, type_of_record, category): #Запись в БД.
     
@@ -131,8 +151,13 @@ def add_to_db(message, type_of_record, category): #Запись в БД.
         sum_to_record = int(message.text)
 
     except ValueError: #Если введенное значение не число
-        bot.send_message(message.chat.id, 'Введите число без запятых, точек и других знаков!')
-        bot.register_next_step_handler(message, add_to_db, type_of_record, category)
+        
+        if message.text == 'Назад': #Вернуться к обработчику команд
+            bot.register_next_step_handler(message, get_message)
+            bot.send_message(message.chat.id, 'Выберите команду', reply_markup = keyboard_commands)
+        else:
+            bot.send_message(message.chat.id, 'Введите число без запятых, точек и других знаков!')
+            bot.register_next_step_handler(message, add_to_db, type_of_record, category)
     
     else:
         table_name = type_of_record + str(message.from_user.id)
