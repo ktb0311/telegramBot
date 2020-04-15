@@ -22,16 +22,12 @@ costs = ['Транспорт','Питание','Продукты','Коммун�
 incomes = ['Зарплата', 'Подработка', 'Кредит или долг', 'Депозит', 'Назад']
 
 instruction = '''
-Вот, что я умею делать:
-
-/reg - регистрация
-/cost - добавить расход
-/income - добавить доход
-/help - помощь
+Я бот для введения учета расходов. Пока я умею только добавлять доходы и расходы.
+Надеюсь, что в будущем я смогу стать еще функциональнее.
 '''
 
 keyboard_commands = telebot.types.ReplyKeyboardMarkup(True, row_width = 1) #Клавиатура с командами
-keyboard_commands.add('/reg','/help','/cost','/income')
+keyboard_commands.add('Добавить расход','Добавить доход','Помощь','Регистрация')
 
 keyboard_costs = telebot.types.ReplyKeyboardMarkup(True, row_width = 1) #Клавиатура с расходами
 [keyboard_costs.add(costs[i]) for i in range(len(costs))] #Клавиатура с расходами. Не самая лучшая идея
@@ -53,24 +49,24 @@ def get_message(message):   #Обработчик сообщений.
     if message.text == '/start':
         bot.send_message(message.chat.id, 'Добро пожаловать '+ message.from_user.first_name +' '+ message.from_user.last_name+ '! ' + instruction, reply_markup=keyboard_commands)    
     
-    elif message.text == '/help': #Помощь
+    elif message.text == 'Помощь': #Помощь
         bot.send_message(message.chat.id, instruction)
     
-    elif message.text == '/cost': #Расход
+    elif message.text == 'Добавить расход': #Расход
         if user_is_entered == True:
             bot.send_message(message.chat.id, 'Выберите категорию расходов', reply_markup = keyboard_costs)
             bot.register_next_step_handler(message, add_cost)
         else:
             bot.send_message(message.chat.id, 'Вам необходимо зарегистрироватся. Для этого напишите /reg')
             
-    elif message.text == '/income': #Доход
+    elif message.text == 'Добавить доход': #Доход
         if user_is_entered == True:
             bot.send_message(message.chat.id, 'Выберите категорию дохода', reply_markup = keyboard_incomes)
             bot.register_next_step_handler(message, add_income)
         else:
             bot.send_message(message.chat.id, 'Вам необходимо зарегистрироватся. Для этого напишите /reg')
     
-    elif message.text == '/reg': #Регистрация
+    elif message.text == 'Регистрация': #Регистрация
         if user_is_entered == True:
             bot.send_message(message.chat.id, 'Вы уже зарегистрированы')
         else:
